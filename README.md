@@ -115,13 +115,23 @@ cd JobTrackerBackend
 poetry install
 ```
 
-### 2. (Optional) Set the database URL
+### 2. Set the database URL
+
+You must provide `DATABASE_URL` so the app can connect to PostgreSQL. Use either method:
+
+**Option A — `.env` file** (in the project root):
+
+```bash
+echo 'DATABASE_URL=postgresql://YOUR_USER@localhost:5432/jobtracker' >> .env
+```
+
+**Option B — export in the shell:**
 
 ```bash
 export DATABASE_URL="postgresql://YOUR_USER@localhost:5432/jobtracker"
 ```
 
-Replace `YOUR_USER` with your Postgres username.
+Replace `YOUR_USER` with your Postgres username (often your OS username). If you set both, the exported value overrides the `.env` value.
 
 ### 3. Run the backend
 
