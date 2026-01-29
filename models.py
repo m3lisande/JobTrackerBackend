@@ -7,7 +7,8 @@ class JobOffer(db.Model):
     __tablename__ = "job_offers"
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    company = db.Column(db.String, nullable=False)
+    company_id = db.Column(db.String(36), db.ForeignKey("users.user_id"), nullable=False)
+    company_name = db.Column(db.String, nullable=False)
     role = db.Column(db.String, nullable=False)
     status = db.Column(
         db.Enum("OPEN", "CLOSED", name="job_offer_status"),
@@ -23,7 +24,8 @@ class JobOffer(db.Model):
     def to_dict(self):
         return {
             "id": self.id,
-            "company": self.company,
+            "company_name": self.company_name,
+            "company_id": self.company_id,
             "role": self.role,
             "status": self.status,
             "created_at": self.created_at,
@@ -51,3 +53,23 @@ class Application(db.Model):
             "applied_date": self.applied_date,
             "created_at": self.created_at,
         }
+
+
+class User(db.Model):
+    __tablename__ = "users"
+
+    role = db.Column(db.String, nullable=False)
+    user_id = db.Column(db.String(36), primary_key=True, nullable=False)
+    first_name = db.Column(db.String, nullable=False)
+    last_name = db.Column(db.String, nullable=False)
+    email = db.Column(db.String, nullable=False)
+
+    def to_dict(self):
+        return {
+            "id": self.user_id,
+            "role": self.role,
+            "first_name": self.first_name,
+            "last_name": self.last_name,
+            "email": self.email,
+        }
+
