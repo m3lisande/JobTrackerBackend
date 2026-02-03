@@ -10,6 +10,11 @@ app = Flask(__name__)
 CORS(app)
 
 app.config["SQLALCHEMY_DATABASE_URI"] = settings.database_url
+
+
+@app.route("/")
+def health_check():
+    return jsonify({"status": "healthy", "message": "JobTracker API is running"}), 200
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = settings.track_modifications
 
 db.init_app(app)
