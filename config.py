@@ -7,7 +7,7 @@ _env_file = Path(__file__).resolve().parent / ".env"
 
 
 class Settings(BaseSettings):
-    database_url: str = "postgresql://localhost:5432/jobtracker"
+    database_url: str
     track_modifications: bool = False
 
     class Config:
