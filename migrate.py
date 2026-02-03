@@ -13,7 +13,7 @@ def init_db(app, db):
         existing_tables = inspector.get_table_names()
 
         # Fresh database → create everything
-        required_tables = {"job_offers", "applications", "user"}
+        required_tables = {"job_offers", "applications", "users"}
         if not required_tables.issubset(existing_tables):
             print("Creating tables (job_offers, applications, user)...")
             db.create_all()

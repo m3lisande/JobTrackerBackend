@@ -10,14 +10,18 @@ app = Flask(__name__)
 CORS(app)
 
 app.config["SQLALCHEMY_DATABASE_URI"] = settings.database_url
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = settings.track_modifications
+
+db.init_app(app)
+
+# Initialize database tables on startup (works with gunicorn in production)
+from migrate import init_db
+init_db(app, db)
 
 
 @app.route("/")
 def health_check():
     return jsonify({"status": "healthy", "message": "JobTracker API is running"}), 200
-app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = settings.track_modifications
-
-db.init_app(app)
 
 @app.route("/api/job_offers", methods=["GET"])
 def list_job_offers():
@@ -149,7 +153,4 @@ def has_applied(offer_id):
     return jsonify({"has_applied": application is not None}), 200
 
 if __name__ == "__main__":
-    from migrate import init_db
-
-    init_db(app, db)
     app.run(debug=True)
