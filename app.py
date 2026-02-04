@@ -41,6 +41,7 @@ def create_application():
     application = Application(
         user_id=data["user_id"],
         job_offer_id=data["job_offer_id"],
+        motivation_letter=data.get("motivation_letter"),
         status="applied",
     )
 
@@ -99,6 +100,7 @@ def create_job_offer():
         company_name=data["company_name"],
         company_id=data["company_id"],
         role=data["role"],
+        description=data.get("description"),
         status=data.get("status", "OPEN"),
     )
 
@@ -133,8 +135,21 @@ def get_applications_for_offer(offer_id):
     if not offer_id:
         return jsonify({"error": "Missing required query param: offer_id"}), 400
     applications = Application.query.filter_by(job_offer_id=offer_id).all()
+    
+    # Build a map of user_id -> application for quick lookup
+    app_by_user = {a.user_id: a for a in applications}
+    
     users = User.query.filter(User.user_id.in_([a.user_id for a in applications]), User.role == "job_seeker").all()
-    return jsonify([user.to_dict() for user in users])
+    
+    # Return user info along with their motivation letter
+    result = []
+    for user in users:
+        user_data = user.to_dict()
+        application = app_by_user.get(user.user_id)
+        user_data["motivation_letter"] = application.motivation_letter if application else None
+        result.append(user_data)
+    
+    return jsonify(result)
 
 @app.route("/api/job_offers/<offer_id>/has_applied", methods=["GET"])
 def has_applied(offer_id):

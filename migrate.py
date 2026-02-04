@@ -15,9 +15,27 @@ def init_db(app, db):
         # Fresh database → create everything
         required_tables = {"job_offers", "applications", "users"}
         if not required_tables.issubset(existing_tables):
-            print("Creating tables (job_offers, applications, user)...")
+            print("Creating tables (job_offers, applications, users)...")
             db.create_all()
             print("Database initialized.")
             return
         
-        print("Database already initialized. Skipping create_all().")
+        print("Database already initialized. Running migrations...")
+        
+        # Add description column to job_offers if it doesn't exist
+        job_offer_columns = [col["name"] for col in inspector.get_columns("job_offers")]
+        if "description" not in job_offer_columns:
+            print("Adding 'description' column to job_offers...")
+            db.session.execute(text("ALTER TABLE job_offers ADD COLUMN description TEXT"))
+            db.session.commit()
+            print("Added 'description' column.")
+        
+        # Add motivation_letter column to applications if it doesn't exist
+        application_columns = [col["name"] for col in inspector.get_columns("applications")]
+        if "motivation_letter" not in application_columns:
+            print("Adding 'motivation_letter' column to applications...")
+            db.session.execute(text("ALTER TABLE applications ADD COLUMN motivation_letter TEXT"))
+            db.session.commit()
+            print("Added 'motivation_letter' column.")
+        
+        print("Migrations complete.")

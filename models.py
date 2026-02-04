@@ -10,6 +10,7 @@ class JobOffer(db.Model):
     company_id = db.Column(db.String(36), db.ForeignKey("users.user_id"), nullable=False)
     company_name = db.Column(db.String, nullable=False)
     role = db.Column(db.String, nullable=False)
+    description = db.Column(db.Text, nullable=True)
     status = db.Column(
         db.Enum("OPEN", "CLOSED", name="job_offer_status"),
         default="OPEN",
@@ -27,6 +28,7 @@ class JobOffer(db.Model):
             "company_name": self.company_name,
             "company_id": self.company_id,
             "role": self.role,
+            "description": self.description,
             "status": self.status,
             "created_at": self.created_at,
         }
@@ -39,6 +41,7 @@ class Application(db.Model):
     user_id = db.Column(db.String, nullable=False)
     job_offer_id = db.Column(db.String(36), db.ForeignKey("job_offers.id"), nullable=False)
     status = db.Column(db.String, default="applied")
+    motivation_letter = db.Column(db.Text, nullable=True)
     applied_date = db.Column(db.Date)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -50,6 +53,7 @@ class Application(db.Model):
             "user_id": self.user_id,
             "job_offer": self.job_offer.to_dict() if self.job_offer else None,
             "status": self.status,
+            "motivation_letter": self.motivation_letter,
             "applied_date": self.applied_date,
             "created_at": self.created_at,
         }
