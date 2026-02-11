@@ -42,21 +42,26 @@ class Application(db.Model):
     job_offer_id = db.Column(db.String(36), db.ForeignKey("job_offers.id"), nullable=False)
     status = db.Column(db.String, default="applied")
     motivation_letter = db.Column(db.Text, nullable=True)
+    resume_key = db.Column(db.String, nullable=True)  # B2 object key for resume file
     applied_date = db.Column(db.Date)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     job_offer = db.relationship("JobOffer", back_populates="applications")
 
-    def to_dict(self):
-        return {
+    def to_dict(self, include_resume_url=None):
+        d = {
             "id": self.id,
             "user_id": self.user_id,
             "job_offer": self.job_offer.to_dict() if self.job_offer else None,
             "status": self.status,
             "motivation_letter": self.motivation_letter,
+            "has_resume": self.resume_key is not None,
             "applied_date": self.applied_date,
             "created_at": self.created_at,
         }
+        if include_resume_url is not None:
+            d["resume_url"] = include_resume_url
+        return d
 
 
 class User(db.Model):

@@ -102,6 +102,20 @@ export DATABASE_URL="postgresql://alex:yourpassword@localhost:5432/jobtracker"
 
 The default in code uses the project author’s username; set `DATABASE_URL` so it matches your Postgres user and database.
 
+### Optional: Backblaze B2 (resume storage)
+
+To allow users to upload a resume when applying and let companies open those resumes, configure [Backblaze B2](https://www.backblaze.com/b2/cloud-storage.html) (S3-compatible, free tier ~10 GB). If these are not set, the app still runs; resume upload is skipped and resume links are omitted.
+
+| Variable          | Description |
+|-------------------|-------------|
+| `B2_KEY_ID`       | B2 Application Key ID (from Backblaze → Application Keys) |
+| `B2_APP_KEY`      | B2 Application Key secret |
+| `B2_BUCKET_NAME`  | Name of the B2 bucket (e.g. `jobtracker-resumes`) |
+| `B2_ENDPOINT`     | S3 endpoint URL (e.g. `https://s3.us-west-004.backblazeb2.com`) |
+| `B2_REGION`       | Region used for signing (default: `us-west-004`) |
+
+Create a bucket in the Backblaze console, then create an Application Key with read/write access to that bucket. Use the key ID and secret as `B2_KEY_ID` and `B2_APP_KEY`. The S3 endpoint URL is shown in the bucket settings (region in the URL, e.g. `us-west-004`).
+
 ---
 
 ## Setup and run
@@ -159,3 +173,4 @@ The server starts in **debug mode** (e.g. `http://127.0.0.1:5000`). On first run
 - [ ] `DATABASE_URL` set to match your user and database (or default is correct)  
 - [ ] `poetry install` run in the project directory  
 - [ ] `poetry run python app.py` (or `python app.py` inside `poetry shell`) to start the server  
+- [ ] (Optional) B2 env vars set if you want resume upload and company resume links  

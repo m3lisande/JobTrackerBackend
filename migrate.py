@@ -37,5 +37,10 @@ def init_db(app, db):
             db.session.execute(text("ALTER TABLE applications ADD COLUMN motivation_letter TEXT"))
             db.session.commit()
             print("Added 'motivation_letter' column.")
+        if "resume_key" not in application_columns:
+            print("Adding 'resume_key' column to applications...")
+            db.session.execute(text("ALTER TABLE applications ADD COLUMN resume_key VARCHAR(512)"))
+            db.session.commit()
+            print("Added 'resume_key' column.")
         
         print("Migrations complete.")
