@@ -102,19 +102,22 @@ export DATABASE_URL="postgresql://alex:yourpassword@localhost:5432/jobtracker"
 
 The default in code uses the project author’s username; set `DATABASE_URL` so it matches your Postgres user and database.
 
-### Optional: Backblaze B2 (resume storage)
+### Optional: Backblaze B2 as S3 (resume storage)
 
-To allow users to upload a resume when applying and let companies open those resumes, configure [Backblaze B2](https://www.backblaze.com/b2/cloud-storage.html) (S3-compatible, free tier ~10 GB). If these are not set, the app still runs; resume upload is skipped and resume links are omitted.
+Upload and download use the **Python backend only** (boto3 S3 client for B2).
+
+- **Upload:** `POST /api/resumes` with multipart form: file (field `resume` or `file`) and `user_id`. Backend uploads to B2 and returns `resume_key`. Use that key in `POST /api/applications` when creating an application.
+- **Download:** Backend generates a **signed URL** (5 minutes) when the company clicks “View Resume” (e.g. `GET /api/company/job_offers/:id` includes `resume_url`, or `GET /api/applications/:id/resume` redirects to it).
 
 | Variable          | Description |
 |-------------------|-------------|
-| `B2_KEY_ID`       | B2 Application Key ID (from Backblaze → Application Keys) |
+| `B2_KEY_ID`       | B2 Application Key ID |
 | `B2_APP_KEY`      | B2 Application Key secret |
-| `B2_BUCKET_NAME`  | Name of the B2 bucket (e.g. `jobtracker-resumes`) |
-| `B2_ENDPOINT`     | S3 endpoint URL (e.g. `https://s3.us-west-004.backblazeb2.com`) |
-| `B2_REGION`       | Region used for signing (default: `us-west-004`) |
+| `B2_BUCKET_NAME`  | Bucket name (e.g. `job-tracker-resumes`) |
+| `B2_ENDPOINT`     | S3 endpoint (e.g. `https://s3.us-west-004.backblazeb2.com`) |
+| `B2_REGION`       | Region (default: `us-west-004`) |
 
-Create a bucket in the Backblaze console, then create an Application Key with read/write access to that bucket. Use the key ID and secret as `B2_KEY_ID` and `B2_APP_KEY`. The S3 endpoint URL is shown in the bucket settings (region in the URL, e.g. `us-west-004`).
+Create a bucket and an Application Key in the Backblaze console.
 
 ---
 

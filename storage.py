@@ -1,8 +1,8 @@
 """
-Backblaze B2 (S3-compatible) storage for resume uploads.
-Uses boto3 with a custom endpoint; works with minimal changes like S3.
+Backblaze B2 as S3-compatible storage for resumes. All upload and download via Python (boto3) on the backend.
 """
 import mimetypes
+import time
 from typing import BinaryIO
 
 from config import settings
@@ -23,12 +23,11 @@ def _client():
     )
 
 
-def upload_resume(application_id: str, file_stream: BinaryIO, filename: str) -> str:
-    """
-    Upload a resume file to B2. Returns the object key (stored in Application.resume_key).
-    """
-    key = f"resumes/{application_id}/{filename}"
-    content_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
+def upload_resume(file_stream: BinaryIO, filename: str, user_id: str) -> str:
+    """Upload resume to B2; returns the key to store and pass as resume_key when creating an application."""
+    safe_name = filename or "resume.pdf"
+    key = f"resumes/{user_id}-{int(time.time() * 1000)}-{safe_name}"
+    content_type = mimetypes.guess_type(safe_name)[0] or "application/pdf"
     client = _client()
     client.upload_fileobj(
         file_stream,
@@ -39,10 +38,20 @@ def upload_resume(application_id: str, file_stream: BinaryIO, filename: str) -> 
     return key
 
 
-def get_presigned_resume_url(resume_key: str, expires_in: int = 3600) -> str:
+def resume_key_exists(resume_key: str) -> bool:
+    """Return True if the object exists in B2."""
+    try:
+        client = _client()
+        client.head_object(Bucket=settings.b2_bucket_name, Key=resume_key)
+        return True
+    except Exception:
+        return False
+
+
+def get_presigned_resume_url(resume_key: str, expires_in: int = 300) -> str:
     """
-    Return a presigned URL so the company (or user) can open/download the resume.
-    Default expiry 1 hour.
+    Return a short-lived presigned URL for downloading the resume (e.g. 5 minutes).
+    Company clicks "View Resume" → backend returns this URL → secure and professional.
     """
     client = _client()
     return client.generate_presigned_url(

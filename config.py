@@ -14,8 +14,8 @@ class Settings(BaseSettings):
     b2_key_id: str | None = None
     b2_app_key: str | None = None
     b2_bucket_name: str | None = None
-    b2_endpoint: str | None = None  # e.g. https://s3.us-west-004.backblazeb2.com
-    b2_region: str = "us-west-004"   # region in endpoint, used for signing
+    b2_endpoint: str | None = None  
+    b2_region: str 
 
     class Config:
         env_prefix = ""

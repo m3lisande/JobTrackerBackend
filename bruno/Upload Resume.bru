@@ -1,0 +1,15 @@
+meta {
+  name: Upload Resume
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{base_url}}/api/resumes
+  body: multipart-form
+}
+
+body:multipart-form {
+  user_id: test-user-123
+  resume: @file(/path/to/your/resume.pdf)
+}

@@ -4,7 +4,10 @@ from db import db
 from config import settings
 from models import Application, JobOffer, User
 from flask import request, jsonify
-from storage import upload_resume, get_presigned_resume_url
+from storage import upload_resume, get_presigned_resume_url, resume_key_exists
+
+# Presigned resume URL expiry (seconds) — short-lived for security
+RESUME_URL_EXPIRES_IN = 60 * 5  # 5 minutes
  
 
 app = Flask(__name__)
@@ -35,44 +38,78 @@ def list_job_offers():
         print("Error listing job offers:", e)
         return jsonify({"error": "Failed to fetch job offers"}), 500
 
+
+@app.route("/api/resumes", methods=["POST"])
+def upload_resume_endpoint():
+    """
+    Upload a resume file to B2 (Python backend, boto3). Returns resume_key for use in POST /api/applications.
+    Body: multipart/form-data with file (field "resume" or "file") and user_id (form field).
+    """
+    if not settings.b2_configured:
+        return jsonify({"error": "Resume storage (B2) is not configured"}), 503
+    file = request.files.get("resume") or request.files.get("file")
+    user_id = (request.form.get("user_id") or "").strip()
+    if not file or not file.filename:
+        return jsonify({"error": "No file provided; send a file (field 'resume' or 'file') and user_id"}), 400
+    if not user_id:
+        return jsonify({"error": "user_id is required (form field)"}), 400
+    try:
+        resume_key = upload_resume(file.stream, file.filename, user_id)
+        return jsonify({"resume_key": resume_key}), 201
+    except Exception as e:
+        print("Resume upload failed:", e)
+        return jsonify({"error": "Resume upload failed", "detail": str(e)}), 500
+
+
 @app.route("/api/applications", methods=["POST"])
 def create_application():
-    # Support both JSON and multipart (for resume upload)
+    # JSON or form: user_id, job_offer_id, motivation_letter, optional resume_key
     if request.is_json:
-        data = request.json
-        resume_file = None
-        resume_filename = None
+        data = request.json or {}
     else:
+        form = request.form or {}
         data = {
-            "user_id": request.form.get("user_id"),
-            "job_offer_id": request.form.get("job_offer_id"),
-            "motivation_letter": request.form.get("motivation_letter"),
+            "user_id": form.get("user_id"),
+            "job_offer_id": form.get("job_offer_id"),
+            "motivation_letter": form.get("motivation_letter"),
+            "resume_key": form.get("resume_key"),
         }
-        if "user_id" not in data or "job_offer_id" not in data:
-            return jsonify({"error": "user_id and job_offer_id are required"}), 400
-        resume_file = request.files.get("resume")
-        resume_filename = resume_file.filename if resume_file and resume_file.filename else None
+
+    if not data.get("user_id") or not data.get("job_offer_id"):
+        return jsonify({"error": "user_id and job_offer_id are required"}), 400
+
+    resume_key = data.get("resume_key") or None
+    if resume_key and settings.b2_configured and not resume_key_exists(resume_key):
+        return jsonify({
+            "error": "resume_key not found",
+            "message": "The given resume_key does not exist in storage. Upload a resume first with POST /api/resumes.",
+        }), 404
+
+    job_offer = JobOffer.query.get(data["job_offer_id"])
+    if not job_offer:
+        return jsonify({
+            "error": "job_offer_id not found",
+            "message": "No job offer exists with the given job_offer_id. Create a job offer first or use an existing id.",
+        }), 404
 
     application = Application(
         user_id=data["user_id"],
         job_offer_id=data["job_offer_id"],
         motivation_letter=data.get("motivation_letter"),
         status="applied",
+        resume_key=resume_key if resume_key else None,
     )
 
     db.session.add(application)
-    db.session.commit()
-
-    # Upload resume to B2 if provided and B2 is configured
-    if resume_file and resume_filename and settings.b2_configured:
-        try:
-            application.resume_key = upload_resume(
-                application.id, resume_file.stream, resume_filename
-            )
-            db.session.commit()
-        except Exception as e:
-            print("Resume upload failed:", e)
-            # Application was created; resume_key stays None
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        err_msg = str(e.orig) if hasattr(e, "orig") else str(e)
+        return jsonify({
+            "error": "Database error while creating application",
+            "detail": err_msg,
+        }), 500
 
     return application.to_dict(), 201
 
@@ -87,7 +124,7 @@ def get_applications():
         resume_url = None
         if a.resume_key and settings.b2_configured:
             try:
-                resume_url = get_presigned_resume_url(a.resume_key)
+                resume_url = get_presigned_resume_url(a.resume_key, expires_in=RESUME_URL_EXPIRES_IN)
             except Exception:
                 pass
         out.append(a.to_dict(include_resume_url=resume_url))
@@ -188,7 +225,7 @@ def get_applications_for_offer(offer_id):
         user_data["has_resume"] = application.resume_key is not None if application else False
         if application and application.resume_key and settings.b2_configured:
             try:
-                user_data["resume_url"] = get_presigned_resume_url(application.resume_key)
+                user_data["resume_url"] = get_presigned_resume_url(application.resume_key, expires_in=RESUME_URL_EXPIRES_IN)
             except Exception:
                 user_data["resume_url"] = None
         else:
@@ -207,9 +244,10 @@ def open_resume(application_id):
         return jsonify({"error": "No resume for this application"}), 404
     if not settings.b2_configured:
         return jsonify({"error": "Resume storage not configured"}), 503
+    resume_key = application.resume_key
     try:
-        url = get_presigned_resume_url(application.resume_key)
-        return redirect(url, code=302)
+        url = get_presigned_resume_url(resume_key, expires_in=RESUME_URL_EXPIRES_IN)
+        return jsonify({"url": url}), 200
     except Exception as e:
         print("Presigned URL failed:", e)
         return jsonify({"error": "Failed to generate resume link"}), 500
