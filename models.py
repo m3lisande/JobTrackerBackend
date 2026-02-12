@@ -16,6 +16,7 @@ class JobOffer(db.Model):
         default="OPEN",
         nullable=False,
     )
+    image_key = db.Column(db.String(512), nullable=True)  # B2 object key for job offer image
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     applications = db.relationship(
@@ -30,6 +31,7 @@ class JobOffer(db.Model):
             "role": self.role,
             "description": self.description,
             "status": self.status,
+            "image_key": self.image_key,
             "created_at": self.created_at,
         }
 

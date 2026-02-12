@@ -29,6 +29,11 @@ def init_db(app, db):
             db.session.execute(text("ALTER TABLE job_offers ADD COLUMN description TEXT"))
             db.session.commit()
             print("Added 'description' column.")
+        if "image_key" not in job_offer_columns:
+            print("Adding 'image_key' column to job_offers...")
+            db.session.execute(text("ALTER TABLE job_offers ADD COLUMN image_key VARCHAR(512)"))
+            db.session.commit()
+            print("Added 'image_key' column.")
         
         # Add motivation_letter column to applications if it doesn't exist
         application_columns = [col["name"] for col in inspector.get_columns("applications")]

@@ -59,3 +59,38 @@ def get_presigned_resume_url(resume_key: str, expires_in: int = 300) -> str:
         Params={"Bucket": settings.b2_bucket_name, "Key": resume_key},
         ExpiresIn=expires_in,
     )
+
+
+def upload_image(file_stream: BinaryIO, filename: str, company_id: str) -> str:
+    """Upload image to B2 under images/; returns the key to store as image_key on job_offer."""
+    safe_name = filename or "image"
+    key = f"images/{company_id}-{int(time.time() * 1000)}-{safe_name}"
+    content_type = mimetypes.guess_type(safe_name)[0] or "application/octet-stream"
+    client = _client()
+    client.upload_fileobj(
+        file_stream,
+        settings.b2_bucket_name,
+        key,
+        ExtraArgs={"ContentType": content_type},
+    )
+    return key
+
+
+def image_key_exists(image_key: str) -> bool:
+    """Return True if the object exists in B2."""
+    try:
+        client = _client()
+        client.head_object(Bucket=settings.b2_bucket_name, Key=image_key)
+        return True
+    except Exception:
+        return False
+
+
+def get_presigned_image_url(image_key: str, expires_in: int = 300) -> str:
+    """Return a short-lived presigned URL for the job offer image."""
+    client = _client()
+    return client.generate_presigned_url(
+        "get_object",
+        Params={"Bucket": settings.b2_bucket_name, "Key": image_key},
+        ExpiresIn=expires_in,
+    )

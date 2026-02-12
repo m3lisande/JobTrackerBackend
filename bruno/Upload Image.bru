@@ -1,0 +1,15 @@
+meta {
+  name: Upload Image
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{base_url}}/api/images
+  body: multipart-form
+}
+
+body:multipart-form {
+  company_id: test-company-123
+  image: @file(/path/to/your/image.png)
+}

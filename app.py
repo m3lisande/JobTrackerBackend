@@ -4,7 +4,13 @@ from db import db
 from config import settings
 from models import Application, JobOffer, User
 from flask import request, jsonify
-from storage import upload_resume, get_presigned_resume_url, resume_key_exists
+from storage import (
+    upload_resume,
+    get_presigned_resume_url,
+    resume_key_exists,
+    upload_image,
+    image_key_exists,
+)
 
 # Presigned resume URL expiry (seconds) — short-lived for security
 RESUME_URL_EXPIRES_IN = 60 * 5  # 5 minutes
@@ -59,6 +65,28 @@ def upload_resume_endpoint():
     except Exception as e:
         print("Resume upload failed:", e)
         return jsonify({"error": "Resume upload failed", "detail": str(e)}), 500
+
+
+@app.route("/api/images", methods=["POST"])
+def upload_image_endpoint():
+    """
+    Upload an image file to B2 under images/. Returns image_key for use in POST /api/company/job_offers.
+    Body: multipart/form-data with file (field "image" or "file") and company_id (form field).
+    """
+    if not settings.b2_configured:
+        return jsonify({"error": "Image storage (B2) is not configured"}), 503
+    file = request.files.get("image") or request.files.get("file")
+    company_id = (request.form.get("company_id") or "").strip()
+    if not file or not file.filename:
+        return jsonify({"error": "No file provided; send a file (field 'image' or 'file') and company_id"}), 400
+    if not company_id:
+        return jsonify({"error": "company_id is required (form field)"}), 400
+    try:
+        image_key = upload_image(file.stream, file.filename, company_id)
+        return jsonify({"image_key": image_key}), 201
+    except Exception as e:
+        print("Image upload failed:", e)
+        return jsonify({"error": "Image upload failed", "detail": str(e)}), 500
 
 
 @app.route("/api/applications", methods=["POST"])
@@ -168,12 +196,20 @@ def get_role():
 def create_job_offer():
     data = request.json
 
+    image_key = data.get("image_key") or None
+    if image_key and settings.b2_configured and not image_key_exists(image_key):
+        return jsonify({
+            "error": "image_key not found",
+            "message": "The given image_key does not exist in storage. Upload an image first with POST /api/images.",
+        }), 404
+
     offer = JobOffer(
         company_name=data["company_name"],
         company_id=data["company_id"],
         role=data["role"],
         description=data.get("description"),
         status=data.get("status", "OPEN"),
+        image_key=image_key,
     )
 
     db.session.add(offer)
