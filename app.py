@@ -10,6 +10,7 @@ from storage import (
     resume_key_exists,
     upload_image,
     image_key_exists,
+    get_presigned_image_url,
 )
 
 # Presigned resume URL expiry (seconds) — short-lived for security
@@ -33,12 +34,25 @@ init_db(app, db)
 def health_check():
     return jsonify({"status": "healthy", "message": "JobTracker API is running"}), 200
 
+def _job_offer_with_image_url(offer):
+    """Return offer dict with image_url set when offer has image_key and B2 is configured."""
+    d = offer.to_dict()
+    if offer.image_key and settings.b2_configured:
+        try:
+            d["image_url"] = get_presigned_image_url(offer.image_key, expires_in=RESUME_URL_EXPIRES_IN)
+        except Exception:
+            d["image_url"] = None
+    else:
+        d["image_url"] = None
+    return d
+
+
 @app.route("/api/job_offers", methods=["GET"])
 def list_job_offers():
     try:
         # Get all job offers where status is "OPEN"
         offers = JobOffer.query.filter_by(status="OPEN").all()
-        return jsonify([o.to_dict() for o in offers]), 200
+        return jsonify([_job_offer_with_image_url(o) for o in offers]), 200
     except Exception as e:
         # Log the error (optional)
         print("Error listing job offers:", e)
@@ -215,15 +229,15 @@ def create_job_offer():
     db.session.add(offer)
     db.session.commit()
 
-    return offer.to_dict(), 201
+    return _job_offer_with_image_url(offer), 201
 
 @app.route("/api/company/job_offers", methods=["GET"])
-def get_company_offers(): 
+def get_company_offers():
     company_id = request.args.get("company_id")
     if not company_id:
         return jsonify({"error": "Missing required query param: company_id"}), 400
     offers = JobOffer.query.filter_by(company_id=company_id).all()
-    return [o.to_dict() for o in offers], 200
+    return jsonify([_job_offer_with_image_url(o) for o in offers]), 200
 
 
 @app.route("/api/company/job_offers/<offer_id>", methods=["PUT"])
@@ -287,6 +301,24 @@ def open_resume(application_id):
     except Exception as e:
         print("Presigned URL failed:", e)
         return jsonify({"error": "Failed to generate resume link"}), 500
+
+
+@app.route("/api/job_offers/<offer_id>/image", methods=["GET"])
+def job_offer_image(offer_id):
+    """Redirect to presigned URL for the job offer image. Frontend can use this when image_url is not in the list payload."""
+    offer = JobOffer.query.filter_by(id=offer_id).first()
+    if not offer:
+        return jsonify({"error": "Job offer not found"}), 404
+    if not offer.image_key:
+        return jsonify({"error": "No image for this job offer"}), 404
+    if not settings.b2_configured:
+        return jsonify({"error": "Image storage not configured"}), 503
+    try:
+        url = get_presigned_image_url(offer.image_key, expires_in=RESUME_URL_EXPIRES_IN)
+        return redirect(url, code=302)
+    except Exception as e:
+        print("Presigned image URL failed:", e)
+        return jsonify({"error": "Failed to generate image link"}), 500
 
 
 @app.route("/api/job_offers/<offer_id>/has_applied", methods=["GET"])
