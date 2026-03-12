@@ -11,6 +11,9 @@ class JobOffer(db.Model):
     company_name = db.Column(db.String, nullable=False)
     role = db.Column(db.String, nullable=False)
     description = db.Column(db.Text, nullable=True)
+    location = db.Column(db.Text, nullable=True)
+    salary = db.Column(db.Text, nullable=True)
+    empl_type = db.Column(db.Text, nullable=True)
     status = db.Column(
         db.Enum("OPEN", "CLOSED", name="job_offer_status"),
         default="OPEN",
@@ -30,6 +33,9 @@ class JobOffer(db.Model):
             "company_id": self.company_id,
             "role": self.role,
             "description": self.description,
+            "location": self.location,
+            "salary": self.salary,
+            "empl_type": self.empl_type,
             "status": self.status,
             "image_key": self.image_key,
             "created_at": self.created_at,

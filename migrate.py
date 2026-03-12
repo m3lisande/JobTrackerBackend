@@ -64,6 +64,21 @@ def init_db(app, db):
             db.session.execute(text("ALTER TABLE job_offers ADD COLUMN image_key VARCHAR(512)"))
             db.session.commit()
             print("Added 'image_key' column.")
+        if "location" not in job_offer_columns:
+            print("Adding 'location' column to job_offers...")
+            db.session.execute(text("ALTER TABLE job_offers ADD COLUMN location TEXT"))
+            db.session.commit()
+            print("Added 'location' column.")
+        if "salary" not in job_offer_columns:
+            print("Adding 'salary' column to job_offers...")
+            db.session.execute(text("ALTER TABLE job_offers ADD COLUMN salary TEXT"))
+            db.session.commit()
+            print("Added 'salary' column.")
+        if "empl_type" not in job_offer_columns:
+            print("Adding 'empl_type' column to job_offers...")
+            db.session.execute(text("ALTER TABLE job_offers ADD COLUMN empl_type TEXT"))
+            db.session.commit()
+            print("Added 'empl_type' column.")
         
         # Add motivation_letter column to applications if it doesn't exist
         application_columns = _column_names("applications")
