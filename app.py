@@ -225,6 +225,7 @@ def create_job_offer():
         location=data.get("location"),
         salary=data.get("salary"),
         empl_type=data.get("empl_type"),
+        field=data.get("field"),
         status=data.get("status", "OPEN"),
         image_key=image_key,
     )

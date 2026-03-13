@@ -79,6 +79,11 @@ def init_db(app, db):
             db.session.execute(text("ALTER TABLE job_offers ADD COLUMN empl_type TEXT"))
             db.session.commit()
             print("Added 'empl_type' column.")
+        if "field" not in job_offer_columns:
+            print("Adding 'field' column to job_offers...")
+            db.session.execute(text('ALTER TABLE job_offers ADD COLUMN "field" TEXT'))
+            db.session.commit()
+            print("Added 'field' column.")
         
         # Add motivation_letter column to applications if it doesn't exist
         application_columns = _column_names("applications")
